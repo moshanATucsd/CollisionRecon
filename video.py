@@ -1,0 +1,73 @@
+from moviepy.editor import VideoFileClip, clips_array, vfx
+folder_path = '/home/dinesh/CarCrash/data/CarCrash/Cleaned2/' 
+video_file = '/output.avi'
+clip1 = VideoFileClip(folder_path + str(0) + video_file) # add 10px contour
+clip2 = VideoFileClip(folder_path + str(1) + video_file) # add 10px contour
+clip3 = VideoFileClip(folder_path + str(2) + video_file) # add 10px contour
+clip4 = VideoFileClip(folder_path + str(3) + video_file) # add 10px contour
+clip5 = VideoFileClip(folder_path + str(4) + video_file) # add 10px contour
+clip6 = VideoFileClip(folder_path + str(5) + video_file) # add 10px contour
+clip7 = VideoFileClip(folder_path + str(6) + video_file) # add 10px contour
+clip8 = VideoFileClip(folder_path + str(25) + video_file) # add 10px contour
+clip9 = VideoFileClip(folder_path + str(8) + video_file) # add 10px contour
+clip10 = VideoFileClip(folder_path + str(9) + video_file) # add 10px contour
+clip11 = VideoFileClip(folder_path + str(10) + video_file) # add 10px contour
+clip12 = VideoFileClip(folder_path + str(11) + video_file) # add 10px contour
+clip13 = VideoFileClip(folder_path + str(12) + video_file) # add 10px contour
+clip14 = VideoFileClip(folder_path + str(13) + video_file) # add 10px contour
+clip15 = VideoFileClip(folder_path + str(14) + video_file) # add 10px contour
+clip16 = VideoFileClip(folder_path + str(15) + video_file) # add 10px contour
+clip17 = VideoFileClip(folder_path + str(16) + video_file) # add 10px contour
+clip18 = VideoFileClip(folder_path + str(17) + video_file) # add 10px contour
+clip19 = VideoFileClip(folder_path + str(18) + video_file) # add 10px contour
+clip20 = VideoFileClip(folder_path + str(21) + video_file) # add 10px contour
+#lip9 = VideoFileClip(folder_path + str(9) + video_file) # add 10px contour
+#clip2 = clip1.fx( vfx.mirror_x)
+#clip3 = clip1.fx( vfx.mirror_y)
+#clip4 = clip1.resize(0.60) # downsize 60%
+clip1 = clip1.set_fps(30)
+clip2 = clip2.set_fps(30)
+clip3 = clip3.set_fps(30)
+clip4 = clip4.set_fps(30)
+clip5 = clip5.set_fps(30)
+clip6 = clip6.set_fps(30)
+clip7 = clip7.set_fps(30)
+clip8 = clip8.set_fps(30)
+clip9 = clip9.set_fps(30)
+clip10 = clip10.set_fps(30)
+clip11 = clip11.set_fps(30)
+clip12 = clip12.set_fps(30)
+clip13 = clip13.set_fps(30)
+clip14 = clip14.set_fps(30)
+clip15 = clip15.set_fps(30)
+clip16 = clip16.set_fps(30)
+clip17 = clip17.set_fps(30)
+clip18 = clip18.set_fps(30)
+clip19 = clip19.set_fps(30)
+clip20 = clip20.set_fps(30)
+clip1 =clip1.resize((1000,700)) 
+clip2 =clip2.resize((1000,700)) 
+clip3 =clip3.resize((1000,700)) 
+clip4 =clip4.resize((1000,700)) 
+clip5 =clip5.resize((1000,700)) 
+clip6 =clip6.resize((1000,700)) 
+clip7 =clip7.resize((1000,700)) 
+clip8 =clip8.resize((1000,700)) 
+clip9 =clip9.resize((1000,700)) 
+clip10 =clip10.resize((1000,700)) 
+clip11 =clip11.resize((1000,700)) 
+clip12 =clip12.resize((1000,700)) 
+clip13 =clip13.resize((1000,700)) 
+clip14 =clip14.resize((1000,700)) 
+clip15 =clip15.resize((1000,700)) 
+clip16 =clip16.resize((1000,700)) 
+clip17 =clip17.resize((1000,700)) 
+clip18 =clip18.resize((1000,700)) 
+clip19 =clip19.resize((1000,700)) 
+clip20 =clip20.resize((1000,700)) 
+
+final_clip = clips_array([[clip1, clip2,clip3,clip4,clip5],
+                          [clip6, clip7,clip1,clip9,clip10],
+			             [clip11, clip12,clip13,clip14,clip15],
+                          [clip16, clip17,clip18,clip19,clip20]])
+final_clip.resize(width=1500).write_videofile(folder_path + "/clubed_segmented.mp4",fps=10)
