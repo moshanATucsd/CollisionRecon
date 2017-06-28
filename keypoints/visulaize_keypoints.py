@@ -230,7 +230,7 @@ def drawPerson(img,keypoints,bb):
     
 
 
-with open('/home/dinesh/CarCrash/data/Fifth/bb_car.txt') as f:
+with open('/home/dinesh/CarCrash/data/Fifth/bb_all.txt') as f:
 #with open('/home/dinesh/CarCrash/data/Fifth/bb_person.txt') as f:
     lines = f.readlines()
 names = []
@@ -240,7 +240,7 @@ for line in lines:
     names.append(line.split(' ')[0])
     bb.append(np.array(line.split(' ')[1:5]).astype(np.float))
 
-with open('/home/dinesh/CarCrash/data/Fifth/keypoints_car.txt') as f:
+with open('/home/dinesh/CarCrash/data/Fifth/keypoints_all.txt') as f:
 #with open('/home/dinesh/CarCrash/data/Fifth/keypoints_person.txt') as f:
     keypoints = f.readlines()
 
@@ -271,8 +271,6 @@ for i,images in enumerate(names):
         img_original = cv2.imread(images)
         img = img_original
         images_prev = images
-    if i == 2000:    
-   		break
     points_array = np.array(points[i].splitlines()[0].split(','))
     points_arranged = points_array.reshape(int(len(points_array)/3),3)
     kp = points_arranged[:,0:3]
@@ -333,16 +331,12 @@ for i,images in enumerate(names):
     else:
         print(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8])
         cv2.imwrite(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8] , img)
-        cv2.imwrite('b_' + images_prev.split('/')[8] , img_original)
         
         out.write(img)
-        img_original = cv2.imread(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8])
+        img_original = cv2.imread(Folder + images.split('/')[7] + '/keypoints/' + images.split('/')[8])
         img = img_original
         images_prev = images
     
-    if i == 2000:    
-   		break    
-   		
     points_array = np.array(points[i].splitlines()[0].split(','))
     points_arranged = points_array.reshape(int(len(points_array)/3),3)
     kp = points_arranged[:,0:3]
@@ -353,7 +347,7 @@ for i,images in enumerate(names):
     #print(kp)
     #kp[:,2] = points_arranged[:,2]
     
-    cv2.rectangle(img,(int(bb[i][0]),int(bb[i][1])),(int(bb[i][0] + bb[i][2]),int(bb[i][1]+bb[i][3])),(0,255,0))
+    cv2.rectangle(img,(int(bb[i][0]),int(bb[i][1])),(int(bb[i][0] + bb[i][2]),int(bb[i][1]+bb[i][3])),(255,0,0))
 
     drawPerson(img,kp,bb)
 

@@ -118,16 +118,16 @@ def drawCar(img,keypoints,bb):
 
 
 #srinivasa
-#    box_width = int(max(bb[i][2],bb[i][3])/10)
-#    if  keypoints[0,2] >50:
-#        cv2.rectangle(img,tuple(keypoints[0,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[0,0:2].astype(np.int) + [box_width,box_width]),(128,0,128), thickness=2)
-#        
-#    if  keypoints[1,2] >50:
-#        cv2.rectangle(img,tuple(keypoints[1,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[1,0:2].astype(np.int) + [box_width,box_width]),(255,0,255), thickness=2)
-#    if  keypoints[2,2] >50:
-#        cv2.rectangle(img,tuple(keypoints[2,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[2,0:2].astype(np.int) + [box_width,box_width]),(0,255,128), thickness=2)
-#    if  keypoints[3,2] >50:
-#        cv2.rectangle(img,tuple(keypoints[3,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[3,0:2].astype(np.int) + [box_width,box_width]),(0,128,128), thickness=2)
+    box_width = int(max(bb[i][2],bb[i][3])/10)
+    if  keypoints[0,2] >50:
+        cv2.rectangle(img,tuple(keypoints[0,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[0,0:2].astype(np.int) + [box_width,box_width]),(128,0,128), thickness=2)
+        
+    if  keypoints[1,2] >50:
+        cv2.rectangle(img,tuple(keypoints[1,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[1,0:2].astype(np.int) + [box_width,box_width]),(255,0,255), thickness=2)
+    if  keypoints[2,2] >50:
+        cv2.rectangle(img,tuple(keypoints[2,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[2,0:2].astype(np.int) + [box_width,box_width]),(0,255,128), thickness=2)
+    if  keypoints[3,2] >50:
+        cv2.rectangle(img,tuple(keypoints[3,0:2].astype(np.int) - [box_width,box_width]) ,tuple(keypoints[3,0:2].astype(np.int) + [box_width,box_width]),(0,128,128), thickness=2)
 
 #    cv2.line(img,tuple(keypoints[4]),tuple(keypoints[5]),(255,0,0),5)
 #    cv2.line(img,tuple(keypoints[5]),tuple(keypoints[6]),(255,0,0),5)
@@ -230,7 +230,7 @@ def drawPerson(img,keypoints,bb):
     
 
 
-with open('/home/dinesh/CarCrash/data/Fifth/bb_car.txt') as f:
+with open('/home/dinesh/CarCrash/data/Fifth/bb_all.txt') as f:
 #with open('/home/dinesh/CarCrash/data/Fifth/bb_person.txt') as f:
     lines = f.readlines()
 names = []
@@ -240,7 +240,7 @@ for line in lines:
     names.append(line.split(' ')[0])
     bb.append(np.array(line.split(' ')[1:5]).astype(np.float))
 
-with open('/home/dinesh/CarCrash/data/Fifth/keypoints_car.txt') as f:
+with open('/home/dinesh/CarCrash/data/Fifth/keypoints_all.txt') as f:
 #with open('/home/dinesh/CarCrash/data/Fifth/keypoints_person.txt') as f:
     keypoints = f.readlines()
 
@@ -261,18 +261,16 @@ for i,images in enumerate(names):
     if images_prev == images:
         img = img
     else:
-        print(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8])
-        cv2.imwrite(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8] , img)
+        print(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8])
+        cv2.imwrite(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8] , img)
         #cv2.imwrite(images_prev.split('/')[8] , img)
         #res = cv2.bitwise_and(img_original,img_original,mask = img)
-        cv2.imwrite('b_' + images_prev.split('/')[8] , img_original)
+        #cv2.imwrite('b_' + images_prev.split('/')[8] , img_original)
         
         out.write(img)
         img_original = cv2.imread(images)
         img = img_original*0
         images_prev = images
-    if i == 20:    
-   		break
     points_array = np.array(points[i].splitlines()[0].split(','))
     points_arranged = points_array.reshape(int(len(points_array)/3),3)
     kp = points_arranged[:,0:3]
@@ -326,23 +324,19 @@ images_prev = ''
 for i,images in enumerate(names):
     if i == 0:
         images_prev = images
-        img_original = cv2.imread(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8])
+        img_original = cv2.imread(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8])
         img = img_original
     if images_prev == images:
         img = img
     else:
-        print(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8])
-        cv2.imwrite(Folder + images_prev.split('/')[7] + '/keypoints/' + images_prev.split('/')[8] , img)
-        #cv2.imwrite('b_' + images_prev.split('/')[8] , img_original)
+        print(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8])
+        cv2.imwrite(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8] , img)
         
         out.write(img)
-        img_original = cv2.imread(Folder + images_prev.split('/')[7] + '/keypoints/b_' + images_prev.split('/')[8])
+        img_original = cv2.imread(Folder + images.split('/')[7] + '/keypoints/b_' + images.split('/')[8])
         img = img_original
         images_prev = images
     
-    if i == 20:    
-   		break    
-   		
     points_array = np.array(points[i].splitlines()[0].split(','))
     points_arranged = points_array.reshape(int(len(points_array)/3),3)
     kp = points_arranged[:,0:3]
@@ -353,7 +347,7 @@ for i,images in enumerate(names):
     #print(kp)
     #kp[:,2] = points_arranged[:,2]
     
-    cv2.rectangle(img,(int(bb[i][0]),int(bb[i][1])),(int(bb[i][0] + bb[i][2]),int(bb[i][1]+bb[i][3])),(0,255,0))
+    cv2.rectangle(img,(int(bb[i][0]),int(bb[i][1])),(int(bb[i][0] + bb[i][2]),int(bb[i][1]+bb[i][3])),(255,0,0))
 
     drawPerson(img,kp,bb)
 
