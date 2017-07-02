@@ -118,6 +118,8 @@ model_car:cuda()
 model_person = torch.load(modelPath_person)
 model_person:cuda()
 
+print('Predicting keypoints')
+
 for hh = 1,21 do
 	for dataPath in io.popen('ls ' .. FolderPath .. tostring(hh-1) .. '/boundingbox/*.txt'):lines() do
 
@@ -132,7 +134,6 @@ for hh = 1,21 do
 		-- saved.input = torch.Tensor(numImgs, unpack(inputDim))
 		-- saved.heatmaps = torch.Tensor(numImgs, unpack(outputDim[1]))
 
-		print('Predicting keypoints')
 
 
 		-- For each instance whose kps are to be predicted
@@ -144,7 +145,6 @@ for hh = 1,21 do
 		resultPath = FolderPath .. tostring(hh-1) ..'/keypoints_txt/' .. tostring(filename)
 		--resultPath = dataPath:replace('boundingbox','sds')
 		print(cimgpath)
-
 		for line in io.lines(dataPath) do
 			-- Load the image from a text file,format : /path/to/text/file x y w h
 			cx, cy, cx2, cy2, class = unpack(line:split(" "));

@@ -199,8 +199,10 @@ def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
     ransac_num = 0
     location_3d = [0,0,0,0]
     bb_inside_final = []
-    for loop in range(1000):
+    for loop in range(1):
         bb_index,bb_compare_index = random.sample(range(1,len(cam_index)),2)
+        bb_index = 38
+        bb_compare_index = 40
         if cam_index[bb_index] == cam_index[bb_compare_index]:
             continue
         #bb = all_bb[bb_index]
@@ -212,7 +214,8 @@ def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
         kp_1 =  kp_all[bb_index]
         kp_2 = kp_all[bb_compare_index]
         point_3d_kp_all = triangulate_visible_keypoints(P_1,P_2,kp_1,kp_2)
-
+        print(point_3d_kp_all)
+        reproject_error = 0
 #        if count != 0:
 #            reproject_error_kp = reproject_error_kp/count
 #        else:
@@ -246,6 +249,7 @@ def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
 #            location_3d = point_3d
 #            
     #print(location_3d)
+    print(bb_inside_final)
     return point_3d_kp_all_final,bb_inside_final
 
 def find_matches(all_bb,kp_all,cam_index,RT_all,K_all,bb_counter,bb_final,point_3d_kp):
@@ -264,13 +268,13 @@ def find_matches(all_bb,kp_all,cam_index,RT_all,K_all,bb_counter,bb_final,point_
         #cv2.rectangle(img1,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c,3)
         #cv2.imwrite(str(synched_images[cam_index[i]]).zfill(5)  + '_check.png',img1)
         #if point_2d[0] > boundingbox[0] and point_2d[0] < boundingbox[0] + boundingbox[2] and point_2d[1] > boundingbox[1] and point_2d[1] < boundingbox[1] + boundingbox[3]:
-        if i in bb_final:
+        if i <100:#in bb_final:
             # print()
             # print(np.sqrt(np.mean((point_2d[0:-1] - center_boundingbox)**2)))
             img = cv2.imread(Folder + str(cam_index[i]) + '/' + str(synched_images[cam_index[i]]).zfill(5) + '.png' )
             cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c,3)
             #cv2.circle(img,tuple(point_2d[0:2]),3,(255,0,128),5)
-            for i,point_3d in enumerate(point_3d_kp):
+            for sdas,point_3d in enumerate(point_3d_kp):
                 if len(point_3d) > 2:
                     #print(point_3d)
                     point = np.dot(P_1,point_3d)
@@ -354,7 +358,7 @@ def reconstruct_keypoints(all_bb,kp_all,cam_index,RT_all,K_all):
     Car_3d = []
     while 1:
         point_3d_kp,bb_final = ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all)
-        if len(bb_final) < 5:
+        if len(bb_final) < 1:
             break
         Car_3d.append(point_3d_kp)
         # find the cars across views
@@ -362,9 +366,9 @@ def reconstruct_keypoints(all_bb,kp_all,cam_index,RT_all,K_all):
 
     return Car_3d
 
-RT, RT_index,K, K_index,diff = Read_data(Folder)
-time = 649
-while time < 652:
+#RT, RT_index,K, K_index,diff = Read_data(Folder)
+time = 660
+while time < 662:
     time = time + 1
     synched_images = - diff + time
     ## read keypoints

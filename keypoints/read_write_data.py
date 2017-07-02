@@ -49,13 +49,14 @@ def time_instance_data(data,synched_images,RT,RT_index,K,K_index):
     K_all = []
     for cam,num in enumerate(synched_images):
         Index_num = np.where(np.array(RT_index[cam]).astype(np.int) == num)
+        #print(Index_num)
         if len(Index_num[0]) == 1:
+
                 RT_cam = RT[cam][int(Index_num[0])]
                 K_cam = K[cam][int(Index_num[0])]
                 if len(data[cam]) > 1: #try:
                     for index,keypoints in enumerate(data[cam]):
                         bb =np.array([keypoints[1],keypoints[2],keypoints[3],keypoints[4]]).astype(np.int)
-
                         points_array = np.array(keypoints[5:])
                         points_arranged = points_array.reshape(14,3)
                         kp = np.round(points_arranged.astype(np.float)).astype(np.int)
