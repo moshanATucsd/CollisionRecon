@@ -94,6 +94,21 @@ def check_nviews(RT_all,K_all,all_bb,cam_index,point_3d_kp_all):
             count_views = count_views + 1
     return count_views
 
+def triangulate_visible_keypoints(P_1,P_2,kp_1,kp_2):
+        #reproject_error_kp = 0
+        point_3d_kp_all =[]
+        for kp_i,kp_v in enumerate(kp_1):
+            if kp_1[kp_i,2] >50 and kp_2[kp_i,2] >50:
+                keypoint_1 = kp_1[kp_i,0:2].reshape(2,1).astype(np.float)
+                keypoint_2 = kp_2[kp_i,0:2].reshape(2,1).astype(np.float)
+                point_3d_kp = triangulate(P_1,P_2,keypoint_1,keypoint_2)
+                point_3d_kp_all.append(point_3d_kp)
+                # reproject_error_kp += Reproject_error_2view(P_1,P_2,keypoint_1,keypoint_2,point_3d_kp)
+                # reproject_error_kp += Reproject_error_nview(RT_all,K_all,all_bb,kp_all,kp_i,cam_index,point_3d_kp)
+            else:
+                point_3d_kp_all.append([])
+        return point_3d_kp_all
+
 
 def check_nviews_new(RT_all,K_all,all_bb,cam_index,kp_all,point_3d_kp_all):
     count_views = 0
@@ -115,13 +130,14 @@ def check_nviews_new(RT_all,K_all,all_bb,cam_index,kp_all,point_3d_kp_all):
                 point_2d = point_2d/np.tile(point_2d[-1, :], (3, 1))
                 if point_2d[0] > boundingbox[0] - 20 and point_2d[0] < boundingbox[0] + boundingbox[2] + 20 and point_2d[1] > boundingbox[1] - 20 and point_2d[1] < boundingbox[1] + boundingbox[3] + 20:
                     num_of_point = num_of_point + 1
-
-        
         if num_of_point > cam_num*7/10:
             cameras.append(i)
             camera.append(cam_index[i])
+
+
     num_added =  np.zeros(len(point_3d_kp_all))
     reproject_error_kp = 0
+    point_3d_kp_eachview = []
     for l,cams_l in enumerate(cameras):
         for h,cams_h in enumerate(cameras):
             P_1 = np.dot(K_all[cams_l],  RT_all[cams_l]) 
@@ -130,25 +146,29 @@ def check_nviews_new(RT_all,K_all,all_bb,cam_index,kp_all,point_3d_kp_all):
             if l != h:
                 kp_1 =  kp_all[cams_l]
                 kp_2 = kp_all[cams_h]
+                point_3d_kp_eachview.append(triangulate_visible_keypoints(P_1,P_2,kp_1,kp_2))
                 for kp_i,kp_v in enumerate(kp_1):
-                    if kp_1[kp_i,2] >10 and kp_2[kp_i,2] >10:
+                    if kp_1[kp_i,2] >60 and kp_2[kp_i,2] >60:
                         keypoint_1 = kp_1[kp_i,0:2].reshape(2,1).astype(np.float)
                         keypoint_2 = kp_2[kp_i,0:2].reshape(2,1).astype(np.float)
                         point_3d_kp = triangulate(P_1,P_2,keypoint_1,keypoint_2)
-                        #print(point_3d_kp_all[kp_i],'as')
+                         #print(point_3d_kp_all[kp_i],'as')
                         #if len(point_3d_kp_all[kp_i]) > 1:
                         #    point_3d_kp_all[kp_i] = (point_3d_kp_all[kp_i]+point_3d_kp)/2
                             
                         #else:
                         #    point_3d_kp_all[kp_i] = point_3d_kp
-                        #reproject_error_kp += Reproject_error_nview(RT_all,K_all,all_bb,kp_all,kp_i,cam_index,point_3d_kp)
-                        num_added[kp_i] += 1
-                        #print(point_3d_kp)
-                        #print(point_3d_kp_all[kp_i])                        
+#                        #reproject_error_kp += Reproject_error_nview(RT_all,K_all,all_bb,kp_all,kp_i,cam_index,point_3d_kp)
+#                        num_added[kp_i] += 1
+#                        #print(point_3d_kp)
+#                        #print(point_3d_kp_all[kp_i])                        
                         
     #for h,point_3d_kp in enumerate(point_3d_kp_all):
      #   if num_added[h] > 0:
      #       point_3d_kp_all[h] = point_3d_kp_all[h]/num_added[h]
+
+    #for av,kp_eachview in enumerate(point_3d_kp_eachview):
+        
         
     count_views = 0
     camera = []
@@ -179,20 +199,48 @@ def check_nviews_new(RT_all,K_all,all_bb,cam_index,kp_all,point_3d_kp_all):
     
     return len(np.unique(camera)),cameras,point_3d_kp_all,reproject_error_kp
 
-def triangulate_visible_keypoints(P_1,P_2,kp_1,kp_2):
-        reproject_error_kp = 0
-        point_3d_kp_all =[]
-        for kp_i,kp_v in enumerate(kp_1):
-            if kp_1[kp_i,2] >50 and kp_2[kp_i,2] >50:
-                keypoint_1 = kp_1[kp_i,0:2].reshape(2,1).astype(np.float)
-                keypoint_2 = kp_2[kp_i,0:2].reshape(2,1).astype(np.float)
-                point_3d_kp = triangulate(P_1,P_2,keypoint_1,keypoint_2)
-                point_3d_kp_all.append(point_3d_kp)
-                # reproject_error_kp += Reproject_error_2view(P_1,P_2,keypoint_1,keypoint_2,point_3d_kp)
-                # reproject_error_kp += Reproject_error_nview(RT_all,K_all,all_bb,kp_all,kp_i,cam_index,point_3d_kp)
-            else:
-                point_3d_kp_all.append([])
-        return point_3d_kp_all
+def drawlines(img1,img2,lines,pt2):
+    print(img1.shape)
+    r,c,h = img1.shape
+    r = lines
+    print(lines[1][0])
+    color = tuple(np.random.randint(0,255,3).tolist())
+    x0,y0 = map(int, [0, -r[2]/r[1] ])
+    x1,y1 = map(int, [c, -(r[2]+r[0]*c)/r[1] ])
+    img2 = cv2.line(img2, (x0,y0), (x1,y1), color,1)
+    img1 = cv2.circle(img1,tuple([150,600]),5,color,5)
+    return img1,img2
+        
+def fundamental_matrix_check():
+        K_1 = K_all[bb_index]
+        K_2 = K_all[bb_compare_index]
+        RT_1 = np.append(RT_all[bb_index],[0,0,0,1])
+        RT_2 = np.append(RT_all[bb_compare_index],[0,0,0,1])
+        RT_1 = np.reshape(RT_1,[4,4])
+        RT_2 = np.asmatrix(np.reshape(RT_2,[4,4]))
+        RT_1_inv = np.linalg.inv(RT_1)
+        RT_between = np.dot(RT_1_inv,RT_2)
+        print(RT_between)
+        print(RT_between[0:3,3])
+        #print(np.transpose(np.linalg.inv(K_2)))
+        #print(np.linalg.inv(np.transpose(K_2)))
+        KRK = np.dot(np.dot(np.linalg.inv(np.transpose(K_2)),RT_between[0:3,0:3]),np.transpose(K_1))
+        KRT = np.dot(K_1,np.dot(np.transpose(RT_between[0:3,0:3]),RT_between[0:3,3]))
+        KRT_3 = np.asmatrix([[0,-KRT[2],KRT[1]],[KRT[2],0,-KRT[0]],[-KRT[1],KRT[0],0]])
+        print(KRT_3)
+        print(KRT)
+        
+        F = np.dot(KRK,KRT_3)
+        img_1 = cv2.imread(Folder + str(cam_index[bb_index]) + '/' + str(synched_images[cam_index[bb_index]]).zfill(5) + '.png' )
+        img_2 = cv2.imread(Folder + str(cam_index[bb_compare_index]) + '/' + str(synched_images[cam_index[bb_compare_index]]).zfill(5) + '.png' )
+        pt2 = [[150],[600],[1]]
+        l = F*pt2
+        img1,img2 = drawlines(img_1,img_2,l,pt2)
+        cv2.imwrite(str(1000) + '.png',img1)
+        cv2.imwrite(str(1001) + '.png',img2)
+
+        print(F)
+        
 
 def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
     ransac_error = 100000
@@ -201,20 +249,24 @@ def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
     bb_inside_final = []
     for loop in range(1):
         bb_index,bb_compare_index = random.sample(range(1,len(cam_index)),2)
-        bb_index = 38
-        bb_compare_index = 40
-        if cam_index[bb_index] == cam_index[bb_compare_index]:
-            continue
+        bb_index = 1#16#18
+        bb_compare_index = 2
+        #if cam_index[bb_index] == cam_index[bb_compare_index]:
+        #    continue
         #bb = all_bb[bb_index]
         #bb_compare = all_bb[bb_compare_index]#random.sample(all_bb,2)
         #center_bb = np.array([[bb[0]+bb[2]/2],[bb[1]+bb[3]/2]])
         #center_bb_compare = np.array([[bb_compare[0]+bb_compare[2]/2],[bb_compare[1]+bb_compare[3]/2]])
         P_1 = np.dot(K_all[bb_index],  RT_all[bb_index]) 
         P_2 = np.dot(K_all[bb_compare_index],  RT_all[bb_compare_index])
+        #fundamental_matrix_check()
+        #F = 
+        #lkaslk
         kp_1 =  kp_all[bb_index]
         kp_2 = kp_all[bb_compare_index]
         point_3d_kp_all = triangulate_visible_keypoints(P_1,P_2,kp_1,kp_2)
-        print(point_3d_kp_all)
+        #print(point_3d_kp_all)
+
         reproject_error = 0
 #        if count != 0:
 #            reproject_error_kp = reproject_error_kp/count
@@ -222,7 +274,7 @@ def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
 #            reproject_error_kp = 100000
 
         #point_3d = triangulate(P_1,P_2,center_bb,center_bb_compare)
-        #reproject_error = Reproject_error_2view(P_1,P_2,center_bb,center_bb_compare,point_3d)
+        #reproject_error = Reproject_errocam_indexr_2view(P_1,P_2,center_bb,center_bb_compare,point_3d)
         #reproject_error = reproject_error_kp# + reproject_error_kp
         #reproject_error = Reproject_error(RT_all,K_all,all_bb,cam_index,point_3d)
         num_inside,bb_inside,point_3d_kp_all_loop,reproject_error = check_nviews_new(RT_all,K_all,all_bb,cam_index,kp_all,point_3d_kp_all)
@@ -237,28 +289,32 @@ def ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all):
             #if :
             #point_3d = point_3d_kp_sum/count
                 #print(point_3d_kp_all_final)
-            point_3d_kp_all_final = point_3d_kp_all_loop
+            point_3d_kp_all_final = point_3d_kp_all# point_3d_kp_all_loop
 #            location_3d = point_3d
             ransac_num = num_inside
             bb_inside_final =bb_inside
                 
       #    reproject_error
 #        
-#            print(reproject_error)
+#            print(reproject_error)26
 #            point_3d = point_3d_kp_sum/count
 #            location_3d = point_3d
 #            
     #print(location_3d)
-    print(bb_inside_final)
+    print(point_3d_kp_all_final)
     return point_3d_kp_all_final,bb_inside_final
 
+        
+    
 def find_matches(all_bb,kp_all,cam_index,RT_all,K_all,bb_counter,bb_final,point_3d_kp):
     all_bb_new = []
     cam_index_new = []
     RT_all_new = []
     K_all_new =[]
     kp_all_new = []
-    c = (random.randint(1,255),random.randint(1,255),random.randint(1,255))
+    c = []
+    for kll in range(20):
+        c.append((random.randint(1,255),random.randint(1,255),random.randint(1,255)))
     for i,boundingbox in enumerate(all_bb):
         P_1 = np.dot(K_all[i],  RT_all[i])
         #point_2d = np.dot(P_1,location_3d)
@@ -272,16 +328,18 @@ def find_matches(all_bb,kp_all,cam_index,RT_all,K_all,bb_counter,bb_final,point_
             # print()
             # print(np.sqrt(np.mean((point_2d[0:-1] - center_boundingbox)**2)))
             img = cv2.imread(Folder + str(cam_index[i]) + '/' + str(synched_images[cam_index[i]]).zfill(5) + '.png' )
-            cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c,3)
+            cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c[0],3)
             #cv2.circle(img,tuple(point_2d[0:2]),3,(255,0,128),5)
             for sdas,point_3d in enumerate(point_3d_kp):
                 if len(point_3d) > 2:
                     #print(point_3d)
                     point = np.dot(P_1,point_3d)
                     point = point/np.tile(point[-1, :], (3, 1))
-                    cv2.circle(img,tuple(point[0:2]),3,(255,0,128),5)
+                    cv2.circle(img,tuple(point[0:2]),3,c[sdas],5)
             cv2.imwrite(str(i) + '.png',img)
             bb_counter += 1
+        #if i in bb_final:
+       #     print(i)
         else:
             all_bb_new.append(boundingbox)
             cam_index_new.append(cam_index[i])
@@ -307,7 +365,6 @@ def scale_transformation(car_points_3d,keypoints):
         points_mesh = []
         points_ours = []
         for ind,points in enumerate(car_points_3d):
-    
             if len(points) < 4 or ind == 7 or ind == 8 :
                 ind = ind
             else:
@@ -358,25 +415,52 @@ def reconstruct_keypoints(all_bb,kp_all,cam_index,RT_all,K_all):
     Car_3d = []
     while 1:
         point_3d_kp,bb_final = ransac_nview(all_bb,kp_all,cam_index,RT_all,K_all)
-        if len(bb_final) < 1:
+        if len(bb_final) < 0:
             break
         Car_3d.append(point_3d_kp)
         # find the cars across views
+        print(point_3d_kp)
         all_bb,kp_all,cam_index,RT_all,K_all,bb_counter = find_matches(all_bb,kp_all,cam_index,RT_all,K_all,bb_counter,bb_final,point_3d_kp)
 
     return Car_3d
+def check_camera_params(K_all,RT_all,all_bb):
+    point_3d_kp_all = []
+    point_3d_kp_all.append([[-6.1375346748325148],[ -1.9155009785924144],[ -9.0769723746858375],[1]])
+    point_3d_kp_all.append([[-4.4339157576732831],[ -1.0597952278844347],[ -2.7590226251928369],[1]])
+    point_3d_kp_all.append([[-7.8724794954370054],[ -1.0978327185800378],[ 0.8556506423515115],[1]])
+    point_3d_kp_all.append([[-2.2319941318443317],[ -0.0387437942347560],[ 11.0741344234011890],[1]])
+    point_3d_kp_all.append([[-2.2319941318443317],[ -0.0387437942347560],[ 11.0741344234011890],[1]])
+    loop = 0
+    c = []
+    for kll in range(20):
+        c.append((random.randint(1,255),random.randint(1,255),random.randint(1,255)))
+    for i,boundingbox in enumerate(all_bb):
+        P_1 = np.dot(K_all[i],  RT_all[i])
+        print(Folder + str(cam_index[i]) + '/' + str(synched_images[cam_index[i]]).zfill(5) + '.png')
+        img = cv2.imread(Folder + str(cam_index[i]) + '/' + str(synched_images[cam_index[i]]).zfill(5) + '.png' )
+        for sdas,point_3d in enumerate(point_3d_kp_all):
+            if len(point_3d) > 2:
+                    point = np.dot(P_1,point_3d)
+                    point = point/np.tile(point[-1, :], (3, 1))
+                    cv2.circle(img,tuple(point[0:2]),3,c[sdas],5)
+        if cam_index[i] != loop:
+            cv2.imwrite(str(i) + '.png',img)
+            loop = cam_index[i]
 
 #RT, RT_index,K, K_index,diff = Read_data(Folder)
-time = 660
-while time < 662:
+
+
+time = -1
+while time < 10000:
     time = time + 1
     synched_images = - diff + time
     ## read keypoints
     data = Read_keypoints(synched_images,Folder)
-    
-    ## find all boundix boxes
     all_bb,kp_all,cam_index,RT_all,K_all = time_instance_data(data,synched_images,RT,RT_index,K,K_index)
-
+    
+    
+    check_camera_params(K_all,RT_all,all_bb)
+    asdasd
     ### Ransac two view triangulation
     Car_3d = reconstruct_keypoints(all_bb,kp_all,cam_index,RT_all,K_all)        
     

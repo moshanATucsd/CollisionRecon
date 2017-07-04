@@ -98,6 +98,7 @@ outputRes = 64
 -- Here, the image refers to the entire image (eg. a KITTI frame)
 -- x, y, w, h are "0-based" indices of a car bounding box
 FolderPath = '/home/dinesh/CarCrash/data/Fifth/' 
+FolderPath = '/home/dinesh/CarCrash/data/CarCrash/Cleaned/' 
 
 -- Path to the saved model (.t7 file)
 modelPath_car = '/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/trained_models/car_model.t7'
@@ -120,7 +121,7 @@ model_person:cuda()
 
 print('Predicting keypoints')
 
-for hh = 1,21 do
+for hh = 2,26 do
 	for dataPath in io.popen('ls ' .. FolderPath .. tostring(hh-1) .. '/boundingbox/*.txt'):lines() do
 
 		-- Determine the number of images
@@ -140,11 +141,12 @@ for hh = 1,21 do
 		i = 1;
 		keypoints = {}
 		bb = {}
-		filename = dataPath:split("/")[8]
+		filename = dataPath:split("/")[table.getn(dataPath:split("/"))]
 		cimgpath = FolderPath .. tostring(hh-1) ..'/' .. tostring(filename:split(".txt")[1])
 		resultPath = FolderPath .. tostring(hh-1) ..'/keypoints_txt/' .. tostring(filename)
+		print(resultPath)
 		--resultPath = dataPath:replace('boundingbox','sds')
-		print(cimgpath)
+		--print(table.getn(dataPath:split("/")))
 		for line in io.lines(dataPath) do
 			-- Load the image from a text file,format : /path/to/text/file x y w h
 			cx, cy, cx2, cy2, class = unpack(line:split(" "));

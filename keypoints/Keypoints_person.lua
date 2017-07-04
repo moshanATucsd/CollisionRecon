@@ -101,7 +101,7 @@ outputRes = 64
 dataPath = '/home/km/code/hourglass-test/exp/testInstances.txt'
 
 -- Path to the saved model (.t7 file)
-modelPath = '/home/km/code/stacked-hourglass/models/singleGPUModel.t7'
+modelPath_ = '/home/km/code/stacked-hourglass/models/singleGPUModel.t7'
 
 -- Path to the results file, where keypoint predictions will be written
 resultPath = '/home/km/code/stacked-hourglass/exp/results.txt'
