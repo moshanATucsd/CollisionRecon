@@ -1,6 +1,51 @@
 import numpy as np
 
 import cv2
+import random
+from image_plot import *
+def Read_data(Folder):
+    ## Read extrinsicsd
+    RT, RT_index = extrinsics(Folder)
+    ## Read intrinsics\
+    K, K_index = intrinsics(Folder)
+    ## Read cameraSync
+    diff = cameraSync(Folder + '/InitSync_minh.txt')
+    diff_ext = cameraSync(Folder + '/InitSync.txt')
+    return RT, RT_index,K, K_index,diff,diff_ext
+
+def save_images(Car_3d,correspondence_all,cam_index,all_bb,K_all,RT_all,time,Folder,synched_images):
+    c =[]
+    for kll in range(40):
+        c.append((random.randint(1,255),random.randint(1,255),random.randint(1,255)))
+    for camera_loop in range(20):
+        img = cv2.imread(Folder + str(camera_loop) + '/' + str(synched_images[camera_loop]).zfill(5) + '.png' )
+        P_1 = []
+        for j in range(len(cam_index)):
+            if camera_loop == cam_index[j]:
+                P_1 = np.dot(K_all[j],  RT_all[j])
+        if len(P_1) <1:
+            continue
+
+        for h,matches in enumerate(correspondence_all):
+            for i,boundingbox in enumerate(all_bb):
+                if i in matches and camera_loop == cam_index[i]:
+                    cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c[h],3)
+        car_points = np.zeros((14,3))
+        for l,point_3d_kp in enumerate(Car_3d):
+            for sdas,point_3d in enumerate(point_3d_kp):
+                car_points[sdas,2] = 0
+                if len(point_3d) > 2:
+                        point = np.dot(P_1,point_3d)
+                        point = point/np.tile(point[-1, :], (3, 1))
+                        #print(point[0])
+                        car_points[sdas,0] = int(point[0])
+                        car_points[sdas,1] = int(point[1])
+                        car_points[sdas,2] = 100
+                        cv2.circle(img,tuple(point[0:2]),3,c[sdas],5)
+            #print(point_3d[9,:])
+            drawCar(img,car_points.astype(np.int))
+        cv2.imwrite(str(time) + '_' + str(camera_loop) + '.png',img)
+
 
 def write_car_transformations(file,scale_best,RT_transform_best):
             print('saved_car')
@@ -49,22 +94,23 @@ def time_instance_data(data,synched_images,RT,RT_index,K,K_index):
     K_all = []
     for cam,num in enumerate(synched_images):
         Index_num = np.where(np.array(RT_index[cam]).astype(np.int) == num)
-        #print(Index_num)
         if len(Index_num[0]) == 1:
-
                 RT_cam = RT[cam][int(Index_num[0])]
                 K_cam = K[cam][int(Index_num[0])]
                 if len(data[cam]) > 1: #try:
                     for index,keypoints in enumerate(data[cam]):
                         bb =np.array([keypoints[1],keypoints[2],keypoints[3],keypoints[4]]).astype(np.int)
-                        points_array = np.array(keypoints[5:])
-                        points_arranged = points_array.reshape(14,3)
+                        if keypoints[-1] == 'car':# or keypoints[-1] == 'car' or keypoints[-1] == 'bus' or keypoints[-1] == 'truck':
+                            points_array = np.array(keypoints[5:-1])
+                        else:
+                            continue #points_array = np.array(keypoints[5:])
+                        points_arranged = points_array.reshape(int(len(points_array)/3),3)
                         kp = np.round(points_arranged.astype(np.float)).astype(np.int)
                         kp[:,0] = bb[0] + kp[:,0]*(bb[2]/64)
                         kp[:,1] = bb[1] + kp[:,1]*(bb[3]/64)
                         kp[:,2] = np.round(points_arranged[:,2].astype(np.float)*100).astype(np.int)
                         #print(np.sqrt(bb[2]**2+bb[3]**2))
-                        if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 1000 and cam != 6 and cam != 8:
+                        if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 1000 and cam != 6:# and cam != 8:
                             all_bb.append(bb)
                             kp_all.append(kp)
                             cam_index.append(cam)
@@ -82,7 +128,8 @@ def read_extrinsics(filename):
         index.append(line.split(' ')[0])
         T = np.array(line.split(' ')[4:7]).astype(np.float).reshape(3,1)
         R,jacobian = cv2.Rodrigues(np.array(line.split(' ')[1:4]).astype(np.float))
-        #T = -(np.dot(R.T,T))
+        #R = np.transpose(R)
+        #T = -(np.dot(np.transpose(R),T))
         RT.append(np.concatenate((R, T), axis=1))
     return RT, index
 
@@ -118,7 +165,7 @@ def extrinsics(Folder):
     RT_index = []
     for cam in range(21):
         try:
-            RT_cam, index_cam = read_extrinsics(Folder +  '/vHCamPose_RSCayley_' + str(cam) + '.txt')
+            RT_cam, index_cam = read_extrinsics('/home/dinesh/CarCrash/data/Fifth/avCamPose_RSCayley_'+ str(cam) + '.txt')#read_extrinsics(Folder +  '/vHCamPose_RSCayley_' + str(cam) + '.txt')
         except:
             RT_cam = []
             index_cam = []#read_extrinsics('/home/dinesh/CarCrash/data/Fifth/avCamPose_RSCayley_'+ str(cam) + '.txt')
@@ -143,8 +190,8 @@ def intrinsics(Folder):
     return K,K_index
     
     
-def cameraSync(Folder):
-    with open(Folder + '/InitSync.txt') as f:
+def cameraSync(filepath):
+    with open(filepath) as f:
         lines = f.readlines()
     index = []
     diff = []
