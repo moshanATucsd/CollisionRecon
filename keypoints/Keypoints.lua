@@ -98,13 +98,17 @@ outputRes = 64
 -- Here, the image refers to the entire image (eg. a KITTI frame)
 -- x, y, w, h are "0-based" indices of a car bounding box
 FolderPath = '/home/dinesh/CarCrash/data/Fifth/' 
-FolderPath = '/home/dinesh/CarCrash/data/CarCrash/Cleaned/' 
+--FolderPath = '/home/dinesh/CarCrash/data/CarCrash/Cleaned/' 
+--FolderPath = '/home/dinesh/CarCrash/data/syn/' 
+--FolderPath = '/home/dinesh/CarCrash/data/Kitti_1/' 
+FolderPath = '/home/dinesh/CarCrash/data/test/' 
 
 -- Path to the saved model (.t7 file)
 modelPath_car = '/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/trained_models/car_model.t7'
 
 modelPath_person = '/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/trained_models/person_model.t7'
 
+modelPath_pascal = '/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/trained_models/pascal3d.t7'
 -- Path to the results file, where keypoint predictions will be written
 resultPath = 'results.txt'
 
@@ -118,10 +122,13 @@ model_car = torch.load(modelPath_car)
 model_car:cuda()
 model_person = torch.load(modelPath_person)
 model_person:cuda()
+model_pascal = torch.load(modelPath_person)
+model_pascal:cuda()
+
 
 print('Predicting keypoints')
 
-for hh = 2,26 do
+for hh = 1,26 do
 	for dataPath in io.popen('ls ' .. FolderPath .. tostring(hh-1) .. '/boundingbox/*.txt'):lines() do
 
 		-- Determine the number of images
@@ -169,9 +176,17 @@ for hh = 2,26 do
 			carImg = image.crop(cimg, cx+1, cy+1, cx+cw, cy+ch)
 			-- Scaling the image to the input resolution
 
-			
+			if class == 'bus' or class == 'truck' then
+				scImg = image.scale(carImg, 256, 256)
+				
+				-- Creating the input tensor
+				input = torch.Tensor(1, 3, 256, 256);
+				input[1] = scImg;
+				output_v = model_pascal:forward(input:cuda())
+			end
+
 			-- Getting output from the network
-			if class == 'car' or class == 'truck' then
+			if class == 'car' then
 				scImg = image.scale(carImg, 64, 64)
 				
 				-- Creating the input tensor
