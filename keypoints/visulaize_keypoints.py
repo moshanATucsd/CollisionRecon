@@ -3,12 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import glob
-
+from image_plot import *
 
 
 
 Folder = '/home/dinesh/CarCrash/data/Fifth/'
 Folder = '/home/dinesh/CarCrash/data/CarCrash/Cleaned/'
+Folder = '/home/dinesh/CarCrash/data/syn/'
+Folder = '/home/dinesh/CarCrash/data/Kitti_1/'
+Folder = '/home/dinesh/CarCrash/data/test/'
 
 
     # front head lights

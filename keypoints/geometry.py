@@ -7,9 +7,41 @@ Created on Fri Jul  7 17:07:39 2017
 """
 import numpy as np
 import cv2
+from icp.icp import *
+
 def distance(point_1,point_2):
     return np.sqrt(np.mean((point_1-point_2)**2))
 
+def ProjectionMatrix(K,RT):
+    return np.dot(K,RT)
+
+def ProjectionMatrix_RS(uv,K,RT,RS_w):
+
+    ycn = (uv[1] - K[1][2] )/ K[1][1]
+    xcn = (uv[0] - K[0][2] - K[0][1])/ K[0][0]
+    
+    wx = ycn*RS_w[0][0]
+    wy = ycn*RS_w[1][0]
+    wz = ycn*RS_w[2][0]
+
+    
+    wx2 = wx*wx
+    wy2 = wy*wy
+    wz2 = wz*wz
+    wxy = wx*wy
+    wxz = wx*wz
+    wyz = wy*wz
+    
+    denum = 1 + wx2 + wy2 + wz2
+    
+    Rw = [[1.0 + wx2 - wy2 - wz2,2.0 * wxy - 2.0 * wz, 2.0 * wy + 2.0 * wxz],[2.0 * wz + 2.0 * wxy, 1.0 - wx2 + wy2 - wz2, 2.0 * wyz - 2.0 * wx],[2.0 * wxz - 2.0 * wy, 2.0 * wx + 2.0 * wyz, 1.0 - wx2 - wy2 + wz2]]
+    Rw = Rw/denum
+    
+    R = np.dot(Rw,RT[0:3,0:3])
+    T = (RT[0:3,3] + [ycn*RS_w[3][0],ycn*RS_w[4][0],ycn*RS_w[5][0]]).astype(np.float).reshape(3,1)
+    RT_final = np.concatenate((R, T),axis=1)
+
+    return np.dot(K,RT_final)
 
 def Reproject_error_1view(P_1,Point_1,location_3d):
         point_2d_1 = np.dot(P_1,location_3d)
@@ -85,7 +117,7 @@ def scale_transformation(car_points_3d,keypoints):
         points_mesh = []
         points_ours = []
         for ind,points in enumerate(car_points_3d):
-            if len(points) < 4 or ind == 8 or ind == 9 :
+            if len(points) < 4 or ind == 8 or ind == 9:
                 #print(keypoints[ind])
                 #print(points)
                 ind = ind
@@ -203,10 +235,41 @@ def count_inliers(all_bb,point_3d_kp_all,K_all,RT_all,kp_all,cam_index):
                 #point_kp = kp_all[i][j]
                 num_of_point += check_withbb(location_3d,P,boundingbox)
         
-        if num_of_point > cam_num*8/10:
+#        if num_of_point == cam_num and num_of_point>3:
+        if num_of_point > cam_num*8/10 and num_of_point>3:
             cameras.append(i)
             camera.append(cam_index[i])
     return camera,cameras
+
+def check_withkp(location_3d,P,kp,boundingbox):
+    point_2d = np.dot(P,location_3d)
+    point_2d = point_2d/np.tile(point_2d[-1, :], (3, 1))
+    h = np.sqrt(boundingbox[2]*boundingbox[2] + boundingbox[3]*boundingbox[3])/5
+    #print(h)
+    if point_2d[0] > kp[0] - h and point_2d[0] < kp[0] + h and point_2d[1] > kp[1] - h and point_2d[1] < kp[1] + h:
+        return 1
+    return 0
+
+def count_inliers_kp(all_bb,point_3d_kp_all,K_all,RT_all,kp_all,cam_index):
+    camera = []
+    cameras = []
+
+    for i,boundingbox in enumerate(all_bb):
+        num_of_point = 0
+        cam_num = 0
+        for j,location_3d in enumerate(point_3d_kp_all):
+            if len(location_3d) > 1 and kp_all[i][j,2] > 50:
+                cam_num += 1
+                P = np.dot(K_all[i],  RT_all[i])
+                #point_kp = kp_all[i][j]
+                num_of_point += check_withkp(location_3d,P,kp_all[i][j],boundingbox)
+        
+#        if num_of_point == cam_num and num_of_point>3:
+        if num_of_point > cam_num*8/10 and num_of_point>3:
+            cameras.append(i)
+            camera.append(cam_index[i])
+    return camera,cameras
+
 
 def count_inliers_point(all_bb,location_3d,K_all,RT_all):
     num_of_point = 0
