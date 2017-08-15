@@ -15,6 +15,7 @@ namespace py = pybind11;
 struct AlignmentErrorTriangulate {
   AlignmentErrorTriangulate(double* observed_in, double* camera_extrinsic_in, double* camera_intrinsic_in): observed(observed_in), camera_extrinsic(camera_extrinsic_in),camera_intrinsic(camera_intrinsic_in) {}
 
+
   template <typename T>
   bool operator()(const T* const point, T* residuals) const {
                   
@@ -67,6 +68,36 @@ struct AlignmentErrorTriangulate {
   double* camera_extrinsic;
   double* camera_intrinsic;
 };
+
+struct AlignmentErrorTrajectory {
+  AlignmentErrorTrajectory() {}
+
+  template <typename T>
+  bool operator()(const T* const car_extrinsic_t_old,const T* const car_extrinsic_t,const T* const car_extrinsic_next, T* residuals) const {
+           
+    T old[3];
+    old[0]= car_extrinsic_t_old[0] - car_extrinsic_t[0];       
+    old[1]= car_extrinsic_t_old[1] - car_extrinsic_t[1];       
+    old[2]= car_extrinsic_t_old[2] - car_extrinsic_t[2];       
+
+    T next[3];
+    next[0]= car_extrinsic_t[0] - car_extrinsic_next[0];       
+    next[1]= car_extrinsic_t[1] - car_extrinsic_next[1];       
+    next[2]= car_extrinsic_t[2] - car_extrinsic_next[2];       
+    
+    residuals[0] = (old[0] - next[0]);
+    residuals[1] = (old[1] - next[1]);
+    residuals[2] = (old[2] - next[2]);
+
+    
+    return true;
+  }
+  
+  double* observed;
+  double* camera_extrinsic;
+  double* camera_intrinsic;
+};
+
 
 struct AlignmentErrorCar {
   AlignmentErrorCar(double* observed_in, double* camera_extrinsic_in, double* camera_intrinsic_in, double* keyp_3d_in): observed(observed_in), camera_extrinsic(camera_extrinsic_in),camera_intrinsic(camera_intrinsic_in),keyp_3d(keyp_3d_in) {}
@@ -137,8 +168,9 @@ struct AlignmentErrorCar {
     //std::cout<<"observed[1]="<<observed[1]<<std::endl;
     //std::cout<<"residuals[0]="<<residuals[0]<<std::endl;
     //std::cout<<"residuals[1]="<<residuals[1]<<std::endl;
-    //std::cout<<"camera_intrinsic[0]="<<car_extrinsic[3]<<std::endl;
-    //std::cout<<"camera_extrinsic[3]="<<car_extrinsic[4]<<std::endl;
+    //std::cout<<"camera_intrinsic[0]="<<carRT[0]<<std::endl;
+    //std::cout<<"camera_intrinsic[0]="<<temp_p[0]<<" "<<p[0]<<" "<<residuals[0]<<" "<<carRT[0]<<" "<<alpha[0]<<" "<<keyp_3d[0]<<" "<<camera_intrinsic[0]<<std::endl;
+    //std::cout<<"camera_extrinsic[3]="<<car_extrin sic[4]<<std::endl;
     //std::cout<<"--------------------------"<<std::endl;
     
     return true;
@@ -169,24 +201,49 @@ double* read_data(py::buffer x0){
     return data;
 	}
 
+void read_data_check(py::buffer x0,double *actual_data[]){
+	auto buf1 = x0.request();
+    if (buf1.ndim != 1) {
+        throw std::runtime_error("Number of dimensions of x0 must be one");
+    }
 
+   
+    double* inputs = static_cast<double*>(buf1.ptr);
 
+    for (unsigned long i = 0; i < buf1.size; i++) {
+        actual_data[i] = &inputs[i];
+    }
+	}
+	
+void read_data_check1(py::buffer x1,double *act_data[]){
+	//std::cout<<"check";
+	auto buf1 = x1.request();
+    double* inputs = static_cast<double*>(buf1.ptr);
 
-
-
+    for (unsigned long i = 0; i < buf1.size; i++) {
+        act_data[i] = &inputs[i];
+    }
+}
 py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::buffer x1,py::buffer x2,py::buffer x3,py::buffer x4,py::buffer x5,py::buffer x6,py::buffer x7) {
-	double* data = read_data(x0);
-	int mode = data[0];
-	int nCam = data[1];
-	int nPts = data[2];
-	int nObs = data[3];
+	auto buf0 = x0.request();
+	double* data = static_cast<double*>(buf0.ptr);
+	unsigned int mode = data[0];
+	unsigned int nCam = data[1];
+	unsigned int nPts = data[2];
+	unsigned int nObs = data[3];
+	  std::cout<<"Parameters: ";
+	  std::cout<<"mode="<<mode<<" ";
 
-
+	  std::cout<<"Meta Info: ";
+	  std::cout<<"nCam="<<nCam<<" ";
+	  std::cout<<"nPts="<<nPts<<" ";
+	  std::cout<<"nObs="<<nObs<<"\t"<<std::endl;
 
   ////// construct camera parameters from camera matrix
-  double* cameraRt = read_data(x1);
-  double* cameraParameter = new double [12*nCam];
-  for(int cameraID=0; cameraID<nCam; ++cameraID){
+  auto buf1 = x1.request();
+  double* cameraRt = static_cast<double*>(buf1.ptr);
+  double* cameraParameter = new double [12*nObs];
+  for(int cameraID=0; cameraID<nObs; ++cameraID){
       double* cameraPtr = cameraParameter+12*cameraID;
       double* cameraMat = cameraRt+12*cameraID;
       if (!(std::isnan(*cameraPtr))){
@@ -206,10 +263,11 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
           //std::cout<<"cameraPtr="<<cameraPtr[0]<<" "<<cameraPtr[1]<<" "<<cameraPtr[2]<<" "<<cameraPtr[3]<<" "<<cameraPtr[4]<<" "<<cameraPtr[5]<<std::endl;
       }
   }	  
-  
-  double* cameraK = read_data(x2);
-  double* cameraIntrinscis = new double [9*nCam];
-  for(int cameraID=0; cameraID<nCam; ++cameraID){
+
+  auto buf2 = x2.request();
+  double* cameraK = static_cast<double*>(buf2.ptr);
+  double* cameraIntrinscis = new double [9*nObs];
+  for(int cameraID=0; cameraID<nObs; ++cameraID){
       double* cameraInt = cameraIntrinscis+9*cameraID;
       double* cameraMat_k = cameraK+9*cameraID;
       if (!(std::isnan(*cameraInt))){
@@ -227,9 +285,10 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
       }
   }	  
 
-  double* location_2d = read_data(x3);
-  double* camera_2d = new double [2*nCam];
-  for(int cameraID=0; cameraID<nCam; ++cameraID){
+  auto buf3 = x3.request();
+  double* location_2d = static_cast<double*>(buf3.ptr);
+  double* camera_2d = new double [2*nObs];
+  for(int cameraID=0; cameraID<nObs; ++cameraID){
       double* cameraPtr_2d = camera_2d+2*cameraID;
       double* cameraMat_2d = location_2d+2*cameraID;
       if (!(std::isnan(*cameraPtr_2d))){
@@ -240,7 +299,8 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
       }
   }	
   
-  double* location_3d = read_data(x4);	 
+  auto buf4 = x4.request();
+  double* location_3d = static_cast<double*>(buf4.ptr);	 
   double* pointCloud = new double [3*nPts];
   for(int cameraID=0; cameraID<nPts; ++cameraID){
       double* cameraPoint = pointCloud+3*cameraID;
@@ -255,22 +315,21 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
   }	 
 
 	
-	double* correspondence_new = read_data(x5);
-    double* correspondence = new double [1*nObs];
+	auto buf5 = x5.request();
+	double* correspondence_new = static_cast<double*>(buf5.ptr);	
+    double* correspondence = new double [nObs];
     for(int cameraID=0; cameraID<nObs; ++cameraID){
 		double* correspondencePtr = correspondence+cameraID;
 		double* correspondenceMat = correspondence_new+cameraID;
-        if (!(std::isnan(*correspondencePtr))){
 		correspondencePtr[0] = correspondenceMat[0];
-		}
-
 	}
 
 
     double* alpha = read_data(x6);
 
 	  // construct camera parameters from camera matrix
-	  double* carRt = read_data(x7);
+	  auto buf7 = x7.request();
+	  double* carRt = static_cast<double*>(buf7.ptr);
 	  double* carPtr = new double [6];
       //std::cout<<"carPtr="<<alpha[0]<<" "<<carRt[0]<<" "<<carRt[1]<<" "<<carRt[2]<<" "<<carRt[3]<<" "<<carRt[4]<<" "<<carRt[9]<<std::endl;
       ceres::RotationMatrixToAngleAxis<double>(carRt, carPtr);
@@ -286,13 +345,7 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
             
 
 	  // output info
-	  std::cout<<"Parameters: ";
-	  std::cout<<"mode="<<mode<<" ";
 
-	  std::cout<<"Meta Info: ";
-	  std::cout<<"nCam="<<nCam<<" ";
-	  std::cout<<"nPts="<<nPts<<" ";
-	  std::cout<<"nObs="<<nObs<<"\t"<<std::endl;
 
 	  //std::cout<<"Camera Intrinsic: "<<correspondence[0];
 	  //std::cout<<"fx="<<fx<<" ";
@@ -313,9 +366,15 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
 		double* observePtr = camera_2d+2*idObs;
 		int counter = (int) correspondence[idObs];
 		double* pointPtr  = pointCloud + 3*counter;
-        //std::cout<<"cameraPtr="<<pointPtr[0]<<" "<<pointPtr[1]<<" "<<pointPtr[2]<<" "<<counter<<std::endl;
+        //std::cout<<"cameraPtr="<<counter<<std::endl;
 		//if (idObs==0){
-		//std::cout<<"cameraPtr="<<time<<" "<<observePtr[1]<<" "<<cameraPtr_ceres[7]<<" "<<cameraInt_ceres[5]<<" "<<pointPtr[1]<<" "<<carPtr[1]<<" "<<alpha[0]<<" "<<counter<<std::endl;
+		//std::cout<<"cameraPtr="<<" "<<observePtr[1];
+		//std::cout<<" "<<cameraPtr_ceres[0];
+		//std::cout<<" "<<cameraInt_ceres[0];
+		//std::cout<<" "<<pointPtr[0];
+		//std::cout<<" "<<carPtr[0];
+		//std::cout<<" "<<alpha[0];
+		//std::cout<<" "<<counter<<std::endl;
 		//}
 		ceres::CostFunction* cost_function;
         //cost_function = new ceres::AutoDiffCostFunction<AlignmentErrorTriangulate, 2, 3>(new AlignmentErrorTriangulate(observePtr,cameraPtr,cameraInt));
@@ -331,6 +390,7 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
 		  ////options.ordering_type = ceres::SCHUR;
 		 ceres::Solver::Summary summary;
 		 ceres::Solve(options, &problem, &summary);
+	    std::cout << summary.BriefReport() << "\n";
 	  double* carRt_op = new double [12];
       ceres::AngleAxisToRotationMatrix<double>(carPtr,carRt_op);
 	  carRt_op[9] = carPtr[3];
@@ -401,19 +461,27 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
     //return x0;
 }
 
+	
 
 
 py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0,py::buffer x1,py::buffer x2,py::buffer x3,py::buffer x4,py::buffer x5,py::buffer x6,py::buffer x7,py::buffer x8) {
-	double* data = read_data(x0);
-	int mode = data[0];
-	int nCam = data[1];
-	int nPts = data[2];
-	int nObs = data[3];
+	
+	auto buf0 = x0.request();
+	double* data = static_cast<double*>(buf0.ptr);
+	unsigned int mode = data[0];
+	unsigned int nCam = data[1];
+	unsigned int nPts = data[2];
+	unsigned int nObs = data[3];
+	  std::cout<<"Parameters: ";
+	  std::cout<<"mode="<<mode<<" ";
 
+	  std::cout<<"Meta Info: ";
+	  std::cout<<"nCam="<<nCam<<" ";
+	  std::cout<<"nPts="<<nPts<<" ";
+	  std::cout<<"nObs="<<nObs<<"\t"<<std::endl;
 
-
-  ////// construct camera parameters from camera matrix
-  double* cameraRt = read_data(x1);
+  auto buf1 = x1.request();
+  double* cameraRt = static_cast<double*>(buf1.ptr);
   double* cameraParameter = new double [12*nObs];
   for(int cameraID=0; cameraID<nObs; ++cameraID){
       double* cameraPtr = cameraParameter+12*cameraID;
@@ -435,8 +503,9 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
           //std::cout<<"cameraPtr="<<cameraPtr[0]<<" "<<cameraPtr[1]<<" "<<cameraPtr[2]<<" "<<cameraPtr[3]<<" "<<cameraPtr[4]<<" "<<cameraPtr[5]<<std::endl;
       }
   }	  
-  
-  double* cameraK = read_data(x2);
+
+  auto buf2 = x2.request();
+  double* cameraK = static_cast<double*>(buf2.ptr);
   double* cameraIntrinscis = new double [9*nObs];
   for(int cameraID=0; cameraID<nObs; ++cameraID){
       double* cameraInt = cameraIntrinscis+9*cameraID;
@@ -456,7 +525,8 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
       }
   }	  
 
-  double* location_2d = read_data(x3);
+  auto buf3 = x3.request();
+  double* location_2d = static_cast<double*>(buf3.ptr);
   double* camera_2d = new double [2*nObs];
   for(int cameraID=0; cameraID<nObs; ++cameraID){
       double* cameraPtr_2d = camera_2d+2*cameraID;
@@ -469,7 +539,8 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
       }
   }	
   
-  double* location_3d = read_data(x4);	 
+  auto buf4 = x4.request();
+  double* location_3d = static_cast<double*>(buf4.ptr);	 
   double* pointCloud = new double [3*nPts];
   for(int cameraID=0; cameraID<nPts; ++cameraID){
       double* cameraPoint = pointCloud+3*cameraID;
@@ -483,21 +554,18 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
       }
   }	 
 
-	double* correspondence_new = read_data(x5);
+	auto buf5 = x5.request();
+	double* correspondence_new = static_cast<double*>(buf5.ptr);	
     double* correspondence = new double [nObs];
     for(int cameraID=0; cameraID<nObs; ++cameraID){
 		double* correspondencePtr = correspondence+cameraID;
 		double* correspondenceMat = correspondence_new+cameraID;
-        if (!(std::isnan(*correspondencePtr))){
 		correspondencePtr[0] = correspondenceMat[0];
-		}
-
 	}
 
-    double* alpha = read_data(x6);
-
 	  // construct camera parameters from camera matrix
-	  double* carRt = read_data(x7);
+      auto buf7 = x7.request();
+	  double* carRt = static_cast<double*>(buf7.ptr);
 	  double* carPtr = new double [6*nCam];
 	  for(int cameraID=0; cameraID<nCam; ++cameraID)
 	  {		
@@ -508,12 +576,12 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 		  carPtr1[4] = carMat[10];
 		  carPtr1[5] = carMat[11];
 		  //std::cout<<"cameraID="<<cameraID<<" : ";
-		  //std::cout<<"cameraPtr="<<carPtr1[0]<<" "<<carPtr1[1]<<" "<<carPtr1[2]<<" "<<carPtr1[3]<<" "<<carPtr1[4]<<" "<<carPtr1[5]<<std::endl;
+		  //std::cout<<"car="<<carPtr1[0]<<" "<<carPtr1[1]<<" "<<carPtr1[2]<<" "<<carPtr1[3]<<" "<<carPtr1[4]<<" "<<carPtr1[5]<<std::endl;
 
 	  }            
 
-
-	double* time_instance_new = read_data(x8);
+	auto buf8 = x8.request();
+	double* time_instance_new = static_cast<double*>(buf8.ptr);	
     double* time_instance = new double [nObs];
     for(int cameraID=0; cameraID<nObs; ++cameraID){
 		double* time_instancePtr = time_instance+cameraID;
@@ -524,19 +592,15 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 
 	}
 
+    double* alpha = read_data(x6);
 
-	  // output info
-	  std::cout<<"Parameters: ";
-	  std::cout<<"mode = "<<mode<<" ";
 
-	  std::cout<<"Meta Info: ";
-	  std::cout<<"nCam="<<nCam<<" ";
-	  std::cout<<"nPts="<<nPts<<" ";
-	  std::cout<<"nObs="<<nObs<<"\t"<<std::endl;
 
 	  ceres::Problem problem;
 	  ceres::LossFunction* loss_function = NULL; // squared loss    
-
+	  double* carPtr_check = new double [6];
+	  carPtr_check[0] = 0;carPtr_check[1] = 0;carPtr_check[2] = 0;carPtr_check[3] = 0;carPtr_check[4] = 0;carPtr_check[5] = 0;
+//	  for (unsigned int idObs=0; idObs<nObs; ++idObs){
 	  for (unsigned int idObs=0; idObs<nObs; ++idObs){
 		double* cameraPtr_ceres = cameraParameter + idObs * 12;
 		double* cameraInt_ceres = cameraIntrinscis + idObs * 9;
@@ -546,21 +610,40 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 		
 		int time = (int) time_instance[idObs];
 		double* carPtr_time = carPtr + time * 6;
-
+		//std::cout<<"cameraPtr="<<" "<<observePtr[1];
+		//std::cout<<" "<<cameraPtr_ceres[0];
+		//std::cout<<" "<<cameraInt_ceres[0];
+		//std::cout<<" "<<pointPtr[0];
+		//std::cout<<" "<<carPtr_time[0];
+		//std::cout<<" "<<alpha[0];
+		//std::cout<<" "<< carPtr[4]<<" "<<sizeof(carPtr_time)<<std::endl;
+		
 		ceres::CostFunction* cost_function;
         cost_function = new ceres::AutoDiffCostFunction<AlignmentErrorCar, 2, 6,1>(new AlignmentErrorCar(observePtr,cameraPtr_ceres,cameraInt_ceres,pointPtr));
         problem.AddResidualBlock(cost_function,loss_function,carPtr_time,alpha);
+        
+
 		}
-		
+		for (int time_loop =1;time_loop <  (int) *std::max_element(time_instance,time_instance+nObs) - 1;time_loop++)
+		{	
+			//std::cout << *std::max_element(time_instance,time_instance+nObs)<<" "<<nObs<<"\n";
+			double* carPtr_time = carPtr + (time_loop) * 6;
+			double* carPtr_time_old = carPtr + (time_loop-1) * 6;
+			double* carPtr_time_new = carPtr + (time_loop+1) * 6;
+			ceres::CostFunction* cost_function_traj;
+			ceres::LossFunction* loss_function_traj = NULL; // squared loss    
+			cost_function_traj = new ceres::AutoDiffCostFunction<AlignmentErrorTrajectory,3,6,6,6>(new AlignmentErrorTrajectory());
+			problem.AddResidualBlock(cost_function_traj,loss_function_traj,carPtr_time_old,carPtr_time,carPtr_time_new);
+		}
 		 ceres::Solver::Options options;
-		 //options.max_num_iterations = 300;  
+		 options.max_num_iterations = 1000;  
 		 options.minimizer_progress_to_stdout = true;
-		 options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;  //ceres::SPARSE_SCHUR;  //ceres::DENSE_SCHUR;
+		 options.linear_solver_type = ceres::SPARSE_SCHUR;  //ceres::SPARSE_SCHUR;  //ceres::DENSE_SCHUR;
 		  ////options.ordering_type = ceres::SCHUR;
 		 ceres::Solver::Summary summary;
 		 ceres::Solve(options, &problem, &summary);
-	    std::cout << summary.FullReport() << "\n";
-      std::cout<<alpha[0]<<std::endl;
+	    std::cout << summary.BriefReport() << "\n";
+      //std::cout<<alpha[0]<<" "<<carPtr_check[1]<<" "<<carPtr_check[2]<<" "<<carPtr_check[3]<<" "<<carPtr_check[4]<<" "<<carPtr_check[5]<<std::endl;
       std::stringstream ss;
 	  
 	  for(int cameraID=0; cameraID<nCam; ++cameraID)
@@ -585,7 +668,7 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 	  
 	  }
      std::string s = ss.str();
-     std::cout<<s<<std::endl;
+     //std::cout<<s<<std::endl;
      
       //std::cout<<"carRt_op="<<anCamlpha[0]<<" "<<carRt_op[0]<<" "<<carRt_op[1]<<" "<<carRt_op[2]<<" "<<carRt_op[3]<<" "<<carRt_op[4]<<" "<<carRt_op[9]<<std::endl;
 
@@ -617,7 +700,7 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
                  "fun"_a = summary.final_cost
                  );
 
-	std::cout<<"check"<<std::endl;
+	//std::cout<<"check"<<std::endl;
     //py::dict out("x"_a = pointCloud[0],
 				 //"y"_a = pointCloud[1],
 				 //"z"_a = pointCloud[2],
@@ -641,6 +724,7 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
                  //"message"_a = summary.message,
                  //"fun"_a = summary.final_cost
                  //);
+    std::cout<<"check"<<std::endl;
 
     return OptimizeResult(out);
     //return x0;

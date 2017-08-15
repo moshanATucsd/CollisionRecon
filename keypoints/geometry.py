@@ -340,6 +340,8 @@ def fundamental_matrix_check():
         cv2.imwrite(str(1001) + '.png',img2)
 
         print(F)
+
+
 def prun_bb(all_bb,kp_all,cam_index,RT_all,K_all,bb_counter,bb_final,point_3d_kp):
     all_bb_new = []
     cam_index_new = []

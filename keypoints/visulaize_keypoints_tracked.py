@@ -48,7 +48,7 @@ def getRGBfromI(RGBint):
     red =   (RGBint >> 16) & 255
     return [red, green, blue]
 
-for main_loop in range(1,21):
+for main_loop in range(21,21):
     filenames = sorted(glob.glob(Folder + str(main_loop-1) + '/keypoints_tracked/*.txt'))
     colormap = np.random.randint(100,2147483646,size = 100000)
     for index,name in enumerate(filenames):

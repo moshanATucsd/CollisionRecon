@@ -29,10 +29,10 @@ def save_images(Car_3d,correspondence_all,cam_index,all_bb,K_all,RT_all,time,Fol
         if len(P_1) <1:
             continue
 
-        for h,matches in enumerate(correspondence_all):
-            for i,boundingbox in enumerate(all_bb):
-                if i in matches and camera_loop == cam_index[i]:
-                    cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c[h],3)
+#        for h,matches in enumerate(correspondence_all):
+#            for i,boundingbox in enumerate(all_bb):
+#                if i in matches and camera_loop == cam_index[i]:
+#                    cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c[h],3)
         car_points = np.zeros((14,3))
         for l,point_3d_kp in enumerate(Car_3d):
             for sdas,point_3d in enumerate(point_3d_kp):
@@ -40,14 +40,10 @@ def save_images(Car_3d,correspondence_all,cam_index,all_bb,K_all,RT_all,time,Fol
                 if len(point_3d) > 2:
                         point = np.dot(P_1,point_3d)
                         point = point/np.tile(point[-1, :], (3, 1))
-                        #print(point_3d)
-                        #print(point)
-                        #print(point[0])
                         car_points[sdas,0] = int(point[0])
                         car_points[sdas,1] = int(point[1])
                         car_points[sdas,2] = 100
                         cv2.circle(img,tuple(point[0:2]),3,c[sdas],5)
-            #print(point_3d[9,:])
             drawCar(img,car_points.astype(np.int))
         cv2.imwrite(str(time) + '_' + str(camera_loop) + '.png',img)
 
@@ -105,6 +101,25 @@ def write_car_transformations(file,scale_best,RT_transform_best):
             file.write(str(RT_transform_best[3][3]))
             file.write('\n')
 
+
+def data_for_vis(Folder,time,Car_3d,scale_all,car_rt_all):
+    file_rt = open(Folder + '/Car3D/' + str(time).zfill(5) +  '.txt','w') 
+    keypoints = np.loadtxt('/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/car_cad/car6_kp.txt', dtype='f', delimiter=',')
+    
+    for loop,car_points_3d in enumerate(Car_3d):
+        for p_l,point_3d in enumerate(car_points_3d):
+            if len(point_3d) == 0:
+                continue
+            file = open(Folder + '/Track3D/OptimizedRaw_Track_' + str(p_l+1000) +  '.txt','a')
+            write_points_3d(file,point_3d,time,time)
+            file.close()
+        #file.write('\n')
+        #scale,RT_transform = scale_transformation(car_points_3d,keypoints)
+        #print(car_rt_all)
+        write_car_transformations(file_rt,scale_all[loop],car_rt_all[loop])           
+    file_rt.close()
+    
+
 def time_instance_data(data,synched_images,RT,RT_index,K,K_index):
     all_bb = []
     cam_index = []
@@ -124,7 +139,7 @@ def time_instance_data(data,synched_images,RT,RT_index,K,K_index):
                         kp,bb = data_to_kp(keypoints)
                         #print(np.sqrt(bb[2]**2+bb[3]**2))
                         #if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000:# and cam != 8:
-                        if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000 and cam != 6:# and cam != 13 and cam != 4 and cam != 17 and cam != 12:# and cam != 8:
+                        if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000 and cam != 6 and cam != 4 and cam != 8:# and cam != 13 and cam != 4 and cam != 17 and cam != 12:# and cam != 8:
                             all_bb.append(bb)
                             kp_all.append(kp)
                             cam_index.append(cam)
@@ -142,6 +157,8 @@ def data_to_kp(keypoints):
     kp[:,1] = bb[1] + kp[:,1]*(bb[3]/64)
     kp[:,2] = np.round(points_arranged[:,2].astype(np.float)*100).astype(np.int)
     return kp,bb
+
+
 def time_instance_data_RS(data,synched_images,RT,RS,RT_index,K,K_index):
     all_bb = []
     cam_index = []
@@ -163,7 +180,7 @@ def time_instance_data_RS(data,synched_images,RT,RS,RT_index,K,K_index):
                         kp = data_to_kp(keypoints)
                         #print(np.sqrt(bb[2]**2+bb[3]**2))
                         #if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000:# and cam != 8:
-                        if np.sqrt(bb[2]**2+bb[3]**2) > 300 and np.sqrt(bb[2]**2+bb[3]**2) < 8000 and cam != 6:# and cam != 13 and cam != 4 and cam != 17 and cam != 12:# and cam != 8:
+                        if np.sqrt(bb[2]**2+bb[3]**2) > 300 and np.sqrt(bb[2]**2+bb[3]**2) < 8000 and cam != 6 and cam != 4:# and cam != 13 and cam != 4 and cam != 17 and cam != 12:# and cam != 8:
                             all_bb.append(bb)
                             kp_all.append(kp)
                             cam_index.append(cam)
