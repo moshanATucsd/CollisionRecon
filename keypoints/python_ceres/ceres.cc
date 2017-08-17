@@ -12,6 +12,30 @@ using namespace pybind11::literals;
 namespace py = pybind11;
 
 
+class SoftLoss : public ceres::LossFunction {
+ public:
+  explicit SoftLoss(double a) : a_(a), b_(a * a) { }
+  virtual void Evaluate(double, double*) const;
+ private:
+  const double a_;
+  // b = a^2.
+  const double b_;
+};
+
+
+void SoftLoss::Evaluate(double s, double rho[3]) const {
+  if (s < b_) {
+    rho[0] = 0;
+    rho[1] = 1;
+    rho[2] = 0;
+  } else {
+    // Inlier region.
+    rho[0] = s;
+    rho[1] = 1;
+    rho[2] = 0;
+  }
+}
+
 struct AlignmentErrorTriangulate {
   AlignmentErrorTriangulate(double* observed_in, double* camera_extrinsic_in, double* camera_intrinsic_in): observed(observed_in), camera_extrinsic(camera_extrinsic_in),camera_intrinsic(camera_intrinsic_in) {}
 
@@ -85,9 +109,9 @@ struct AlignmentErrorTrajectory {
     next[1]= car_extrinsic_t[1] - car_extrinsic_next[1];       
     next[2]= car_extrinsic_t[2] - car_extrinsic_next[2];       
     
-    residuals[0] = (old[0] - next[0]);
-    residuals[1] = (old[1] - next[1]);
-    residuals[2] = (old[2] - next[2]);
+    residuals[0] =T(10) * (old[0] - next[0]);
+    residuals[1] =T(10) * (old[1] - next[1]);
+    residuals[2] =T(10) * (old[2] - next[2]);
 
     
     return true;
@@ -377,6 +401,8 @@ py::object ba_optimize(py::function func, py::function grad, py::buffer x0,py::b
 		//std::cout<<" "<<counter<<std::endl;
 		//}
 		ceres::CostFunction* cost_function;
+		loss_function = new SoftLoss(10);
+
         //cost_function = new ceres::AutoDiffCostFunction<AlignmentErrorTriangulate, 2, 3>(new AlignmentErrorTriangulate(observePtr,cameraPtr,cameraInt));
         //problem.AddResidualBlock(cost_function,loss_function,pointPtr);
         cost_function = new ceres::AutoDiffCostFunction<AlignmentErrorCar, 2, 6,1>(new AlignmentErrorCar(observePtr,cameraPtr_ceres,cameraInt_ceres,pointPtr));
@@ -576,7 +602,7 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 		  carPtr1[4] = carMat[10];
 		  carPtr1[5] = carMat[11];
 		  //std::cout<<"cameraID="<<cameraID<<" : ";
-		  //std::cout<<"car="<<carPtr1[0]<<" "<<carPtr1[1]<<" "<<carPtr1[2]<<" "<<carPtr1[3]<<" "<<carPtr1[4]<<" "<<carPtr1[5]<<std::endl;
+		  //std::cout<<"car="<<carPtr_check[cameraID][1]<<" "<<carPtr1[1]<<" "<<carPtr1[2]<<" "<<carPtr1[3]<<" "<<carPtr1[4]<<" "<<carPtr1[5]<<std::endl;
 
 	  }            
 
@@ -597,29 +623,29 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 
 
 	  ceres::Problem problem;
-	  ceres::LossFunction* loss_function = NULL; // squared loss    
-	  double* carPtr_check = new double [6];
-	  carPtr_check[0] = 0;carPtr_check[1] = 0;carPtr_check[2] = 0;carPtr_check[3] = 0;carPtr_check[4] = 0;carPtr_check[5] = 0;
+//	  carPtr_check[0] = 0;carPtr_check[1] = 0;carPtr_check[2] = 0;carPtr_check[3] = 0;carPtr_check[4] = 0;carPtr_check[5] = 0;
 //	  for (unsigned int idObs=0; idObs<nObs; ++idObs){
 	  for (unsigned int idObs=0; idObs<nObs; ++idObs){
-		double* cameraPtr_ceres = cameraParameter + idObs * 12;
+		ceres::LossFunction* loss_function = NULL; // squared loss   
+		loss_function = new SoftLoss(10);
+	  	double* cameraPtr_ceres = cameraParameter + idObs * 12;
 		double* cameraInt_ceres = cameraIntrinscis + idObs * 9;
 		double* observePtr = camera_2d+2*idObs;
 		int counter = (int) correspondence[idObs];
 		double* pointPtr  = pointCloud + 3*counter;
 		
 		int time = (int) time_instance[idObs];
+		//std::cout<<"cameraPtr="<<time<<" "<<carPtr_check[time][4];
 		double* carPtr_time = carPtr + time * 6;
-		//std::cout<<"cameraPtr="<<" "<<observePtr[1];
 		//std::cout<<" "<<cameraPtr_ceres[0];
 		//std::cout<<" "<<cameraInt_ceres[0];
 		//std::cout<<" "<<pointPtr[0];
 		//std::cout<<" "<<carPtr_time[0];
 		//std::cout<<" "<<alpha[0];
-		//std::cout<<" "<< carPtr[4]<<" "<<sizeof(carPtr_time)<<std::endl;
+		//std::cout<<time<<" "<< carPtr_time[4]<<" "<<sizeof(carPtr_time)/sizeof(carPtr_time[0])<<std::endl;
 		
 		ceres::CostFunction* cost_function;
-        cost_function = new ceres::AutoDiffCostFunction<AlignmentErrorCar, 2, 6,1>(new AlignmentErrorCar(observePtr,cameraPtr_ceres,cameraInt_ceres,pointPtr));
+        cost_function = new ceres::AutoDiffCostFunction<AlignmentErrorCar, 2, 6, 1>(new AlignmentErrorCar(observePtr,cameraPtr_ceres,cameraInt_ceres,pointPtr));
         problem.AddResidualBlock(cost_function,loss_function,carPtr_time,alpha);
         
 
@@ -655,28 +681,24 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
 	      carMat_op_new[10] = carPtr_new[4];
 	      carMat_op_new[11] = carPtr_new[5];
 	      
-	      
     for(size_t i = 0; i < 12; i++)
     {
 		//std::cout<<i<<std::endl;
-			if(i != 0)
-				ss << ",";
-			ss << carMat_op_new[i];
+		if(i != 0)
+			ss << ",";
+		ss << carMat_op_new[i];
 		}
   	if(cameraID <nCam-1)
 		ss << ",";
 	  
 	  }
      std::string s = ss.str();
-     //std::cout<<s<<std::endl;
-     
-      //std::cout<<"carRt_op="<<anCamlpha[0]<<" "<<carRt_op[0]<<" "<<carRt_op[1]<<" "<<carRt_op[2]<<" "<<carRt_op[3]<<" "<<carRt_op[4]<<" "<<carRt_op[9]<<std::endl;
+     auto OptimizeResult = py::module::import("scipy.optimize").attr("OptimizeResult");
+     py::dict out( "rt"_a = s,"scale"_a = alpha[0]);
+     return OptimizeResult(out);
 
-
-
-
-
-
+    
+    
     ////ceres::Solve(options, problem, data, &summary);
 
 
@@ -688,17 +710,6 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
         //nfev += summ.line_search_function_evaluations;
         //ngev += summ.line_search_gradient_evaluations;
     //}
-
-    auto OptimizeResult = py::module::import("scipy.optimize").attr("OptimizeResult");
-
-    py::dict out("scale"_a = alpha[0],
-				 "rt"_a = s,
-                 "success"_a = summary.termination_type == ceres::CONVERGENCE ||
-                               summary.termination_type == ceres::USER_SUCCESS,
-                 "status"_a = (int)summary.termination_type,
-                 "message"_a = summary.message,
-                 "fun"_a = summary.final_cost
-                 );
 
 	//std::cout<<"check"<<std::endl;
     //py::dict out("x"_a = pointCloud[0],
@@ -724,9 +735,6 @@ py::object ba_optimize_video(py::function func, py::function grad, py::buffer x0
                  //"message"_a = summary.message,
                  //"fun"_a = summary.final_cost
                  //);
-    std::cout<<"check"<<std::endl;
-
-    return OptimizeResult(out);
     //return x0;
 }
 
@@ -740,6 +748,6 @@ PYBIND11_PLUGIN(ceres) {
     //m.def("optimize", &optimize, "Optimizes the function");
     m.def("ba_optimize", &ba_optimize, "Optimizes the function");
     m.def("ba_optimize_video", &ba_optimize_video, "Optimizes the function");
-
+	std::cout<<"out";
     return m.ptr();
 }

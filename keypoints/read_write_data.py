@@ -29,10 +29,12 @@ def save_images(Car_3d,correspondence_all,cam_index,all_bb,K_all,RT_all,time,Fol
         if len(P_1) <1:
             continue
 
-#        for h,matches in enumerate(correspondence_all):
-#            for i,boundingbox in enumerate(all_bb):
-#                if i in matches and camera_loop == cam_index[i]:
-#                    cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c[h],3)
+        for h,matches in enumerate(correspondence_all):
+            for i,boundingbox in enumerate(all_bb):
+                if i in matches and camera_loop == cam_index[i]:
+                    cv2.rectangle(img,(int(boundingbox[0]),int(boundingbox[1])),(int(boundingbox[0] + boundingbox[2]),int(boundingbox[1]+boundingbox[3])),c[h],3)
+
+
         car_points = np.zeros((14,3))
         for l,point_3d_kp in enumerate(Car_3d):
             for sdas,point_3d in enumerate(point_3d_kp):
@@ -139,7 +141,7 @@ def time_instance_data(data,synched_images,RT,RT_index,K,K_index):
                         kp,bb = data_to_kp(keypoints)
                         #print(np.sqrt(bb[2]**2+bb[3]**2))
                         #if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000:# and cam != 8:
-                        if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000 and cam != 6 and cam != 4 and cam != 8:# and cam != 13 and cam != 4 and cam != 17 and cam != 12:# and cam != 8:
+                        if np.sqrt(bb[2]**2+bb[3]**2) > 100 and np.sqrt(bb[2]**2+bb[3]**2) < 8000 and cam != 6:# and cam != 5 and cam != 4 and cam != 8:# and cam != 13 and cam != 4 and cam != 17 and cam != 12:# and cam != 8:
                             all_bb.append(bb)
                             kp_all.append(kp)
                             cam_index.append(cam)

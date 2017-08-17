@@ -16,7 +16,7 @@ Folder = '/home/dinesh/CarCrash/data/Fifth/'
 #Folder = '/home/dinesh/CarCrash/data/syn/'
 
 
-def tracklet_data(tracklet_num,camera,time,kp_track,all_time,all_cam,camera_index):
+def tracklet_data(tracklet_num,camera,time,kp_track,all_time,all_cam,camera_index,video_window):
     
     new_time = time
     flag = 0
@@ -32,10 +32,10 @@ def tracklet_data(tracklet_num,camera,time,kp_track,all_time,all_cam,camera_inde
                         break
                     else:
                         flag = 1
-        if flag == 1:
+        if flag == 1 or new_time < time-video_window:
             break
     
-    
+    Rollingshutter
     
     while(1):
         new_time = new_time + 1
@@ -54,17 +54,17 @@ def tracklet_data(tracklet_num,camera,time,kp_track,all_time,all_cam,camera_inde
                 else:
                     flag = 1
             
-        if flag == 1:
+        if flag == 1 or new_time > time+video_window:
             break
     return kp_track
 
-def get_tracklets(tracklet,cam_index,corr,K,time):
+def get_tracklets(tracklet,cam_index,corr,K,time,video_window):
     kp_track = []
     all_cam = []
     all_time = []
     camera_index = []
     for a,val in enumerate(corr):
-        tracklet_data(tracklet[val],cam_index[val],time,kp_track,all_time,all_cam,camera_index)
+        tracklet_data(tracklet[val],cam_index[val],time,kp_track,all_time,all_cam,camera_index,video_window)
     return kp_track,all_time,all_cam,camera_index
 
 def video_data_ceres(kp_track,all_time,all_cam,camera_index,RT,K):
@@ -93,13 +93,12 @@ def video_data_ceres(kp_track,all_time,all_cam,camera_index,RT,K):
 
 
 
-def bundleAdjust_video(K_ceres,RT_ceres,point_2d,correspondence,car_time,cam_ind,scale_all,ind,car_rt_all):
+def bundleAdjust_video(K_ceres,RT_ceres,point_2d,correspondence,car_time,cam_ind,scale,car_rt):
     RT_transform = []
     keypoints = np.loadtxt('/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/car_cad/car6_kp.txt', dtype='f', delimiter=',')
-    scale = scale_all[ind]
-    for a in range(max(car_time)):
+    for a in range(max(car_time)+1):
             #RT_transform.append(np.identity(4))
-            RT_transform.append(car_rt_all[ind])
+            RT_transform.append(car_rt)
                 
     np.savez('car_video_test', K_ceres, RT_ceres, keypoints.reshape(len(keypoints)*3), point_2d,correspondence,scale,RT_transform,car_time,cam_ind)
     scale,RT_transform = car_fit_video_nview_with_ceres(K_ceres, RT_ceres,keypoints.reshape(len(keypoints)*3),point_2d,correspondence,scale,RT_transform,car_time)
@@ -119,20 +118,21 @@ def video_carfit(time,RT,RS, RT_index,K, K_index,diff,diff_ext,video_window):
             Car_3d,correspondence_all,scale_all,car_rt_all = reconstruct_keypoints(all_bb,kp_all,cam_index,RT_all,K_all)       
             
             for ind,corr in enumerate(correspondence_all):
-                kp_track,all_time,all_cam,camera_index = get_tracklets(tracklet,cam_index,corr,K,time)
+                kp_track,all_time,all_cam,camera_index = get_tracklets(tracklet,cam_index,corr,K,time,video_window)
+                #print(all_time)
                 K_ceres,RT_ceres,point_2d,correspondence,car_time,cam_ind = video_data_ceres(kp_track,all_time,all_cam,camera_index,RT,K)
-
-                scale, RT_transform_all = bundleAdjust_video(K_ceres,RT_ceres,point_2d,correspondence,car_time,cam_ind,scale_all,ind,car_rt_all)
+                scale, RT_transform_all = bundleAdjust_video(K_ceres,RT_ceres,point_2d,correspondence,car_time,cam_ind,scale_all[ind],car_rt_all[ind])
                 
                 
                 for inde,RT_transform in enumerate(RT_transform_all):
-                    time_save = min(car_time) + inde
+                    time_save = min(all_time) + inde
                     synched_images = - diff + time_save - diff_ext
                     data = Read_keypoints(synched_images,Folder,leading_zeros)
                     all_bb,kp_all,cam_index,tracklet,RT_all,K_all = time_instance_data(data,synched_images_ext,RT,RT_index,K,K_index)
                     
                     
                     keypoints = np.loadtxt('/home/dinesh/CarCrash/codes/CollisionRecon/keypoints/car_cad/car6_kp.txt', dtype='f', delimiter=',')
+                    #print(RT_transform)
                     point_3d_car_kp_all_best =[]
                     for kk,loop in enumerate(keypoints):
                         keypnt = np.transpose(np.dot(RT_transform,np.transpose(np.append(keypoints[kk]*scale,1))))
@@ -142,9 +142,10 @@ def video_carfit(time,RT,RS, RT_index,K, K_index,diff,diff_ext,video_window):
                             point_3d_car_kp_all_best.append([])
                         else:
                             point_3d_car_kp_all_best.append(np.reshape(keypnt,[4,1]))
-                    camera,correspondence_all = count_inliers_kp(all_bb,point_3d_car_kp_all_best,K_all,RT_all,kp_all,cam_index)
-                    save_images(point_3d_car_kp_all_best,correspondence_all,cam_index,all_bb,K_all,RT_all,time,Folder,synched_images)
-
+                    camera, correspondence_all = count_inliers_kp(all_bb,point_3d_car_kp_all_best,K_all,RT_all,kp_all,cam_index)
+                    #print(correspondence_all)
+                    save_images([point_3d_car_kp_all_best],[correspondence_all],cam_index,all_bb,K_all,RT_all,time_save,Folder,synched_images)
+                asas
                     #print('here')
                     #print(scale,RT_transform)
 
@@ -155,10 +156,10 @@ def video_carfit(time,RT,RS, RT_index,K, K_index,diff,diff_ext,video_window):
 
 num_cams = 21
 leading_zeros = 5
-video_window = 11
+video_window = 20
 Rollingshutter = False 
 RT,RS, RT_index,K, K_index,diff,diff_ext = Read_data(Folder,num_cams,Rollingshutter)
-time = 630
+time = 600
 while time < 10000:
     print('Checking for objects in time instance ',time)
     time = time + 1

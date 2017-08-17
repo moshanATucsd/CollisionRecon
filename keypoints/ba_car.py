@@ -57,6 +57,7 @@ d =npzfile['arr_3']
 e =npzfile['arr_4']
 f =npzfile['arr_5']
 g =npzfile['arr_6']
+#scale,RT_transform = car_fit_nview_with_ceres(a,b,c,d,e,f,g[0:3])
 
 a_new = a
 b_new = b
@@ -65,7 +66,7 @@ e_new = e
 g_new = g
 h = e*0
 g = [g]
-for fd in range(3000):
+for fd in range(1):
     h_new = (e_new*0 + 1)*fd+1
     a = np.append(a,a_new,axis=0)
     b = np.append(b,b_new,axis=0)
@@ -75,13 +76,15 @@ for fd in range(3000):
     g = np.append(g,[g_new ],axis=0)
     h = np.append(h,h_new)
 
+scale,RT_transform = car_fit_video_nview_with_ceres(a,b,c,d,e,f,g,h)
 try:
 	scale,RT_transform = car_fit_video_nview_with_ceres(a,b,c,d,e,f,g,h)
+	print(scale,RT_transform[1])
 except:
-	scale = scale
+	scale = 1
 #scale,RT_transform = car_fit_video_nview_with_ceres(a,b,c,d,e,f,[g],e*0)
 #scale,RT_transform = car_fit_video_nview_with_ceres(a,b,c,d,e,f,g,h)
-print(scale,RT_transform[1])
+#print(scale,RT_transform[1])
 # 950 924
 # [-2.01338178  0.08241741  0.97774704  1.        ]
 # [-0.09778239  0.16383822 -0.05076314  1.        ]

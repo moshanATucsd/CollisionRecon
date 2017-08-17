@@ -11,6 +11,13 @@ from read_write_data import *
 from check_cameras import *
 from python_ceres.ba import *
 
+
+num_cams = 21
+leading_zeros = 5
+video_window = 2
+Rollingshutter = False 
+Folder = '/home/dinesh/CarCrash/data/Fifth/'
+
 def check_nviews_ransac(RT_all,K_all,all_bb,cam_index,kp_all,point_3d_kp_all):
     camera,cameras = count_inliers(all_bb,point_3d_kp_all,K_all,RT_all,kp_all,cam_index)
     num_added =  np.zeros(len(point_3d_kp_all))
